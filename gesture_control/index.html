@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesture Control Interface</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+    <script type="text/babel">
+        function GestureInterface() {
+            const [cursorPosition, setCursorPosition] = React.useState({ x: 0, y: 0 });
+            const [activeButton, setActiveButton] = React.useState(null);
+            const [scrollPosition, setScrollPosition] = React.useState(0);
+            const [connected, setConnected] = React.useState(false);
+            const [menuOpen, setMenuOpen] = React.useState(false);
+            const [currentTask, setCurrentTask] = React.useState('');
+
+            const scrollContent = [
+                { title: "Introduction to Gesture Control", content: "Learn how to use hand gestures to control your computer interface." },
+                { title: "Basic Navigation", content: "Use your index finger to move the cursor around the screen." },
+                { title: "Menu Controls", content: "Show all five fingers to open the menu, and only thumb up to close it." },
+                { title: "Scrolling Tutorial", content: "Use two fingers (index and middle) pointed upward and move them up/down to scroll." },
+                { title: "Click Actions", content: "Bring your thumb and index finger together while keeping middle finger extended to click." },
+                { title: "System Integration", content: "Control various system functions using the gesture interface." },
+                { title: "Volume Control", content: "Adjust system volume using hand gestures in the menu." },
+                { title: "Brightness Settings", content: "Modify screen brightness through gesture controls." },
+                { title: "Media Playback", content: "Control media playback with intuitive hand movements." },
+                { title: "Custom Gestures", content: "Learn about creating and using custom gesture controls." },
+                { title: "Troubleshooting", content: "Common issues and solutions for gesture recognition." },
+                { title: "Advanced Features", content: "Explore advanced features and customization options." },
+                { title: "Gesture Combinations", content: "Learn about combining different gestures for complex actions." },
+                { title: "Performance Tips", content: "Tips for improving gesture recognition accuracy." },
+                { title: "Updates and Features", content: "Stay updated with the latest features and improvements." },
+                { title: "Keyboard Integration", content: "Use gestures in combination with keyboard shortcuts." },
+                { title: "Mouse Integration", content: "Seamlessly switch between gesture and mouse controls." },
+                { title: "Application Control", content: "Control different applications using gesture interface." },
+                { title: "System Requirements", content: "Learn about system requirements for optimal performance." },
+                { title: "Future Updates", content: "Upcoming features and improvements in the gesture control system." }
+            ];
+
+            React.useEffect(() => {
+                const socket = new WebSocket('ws://localhost:8765');
+                
+                socket.onopen = () => {
+                    console.log('Connected to gesture controller');
+                    setConnected(true);
+                };
+                
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log('Received gesture data:', data);
+                    
+                    setCursorPosition(data.cursor || cursorPosition);
+                    
+                    if (data.menu !== undefined) {
+                        setMenuOpen(data.menu);
+                    }
+                    
+                    if (data.click) {
+                        handleClick(data.cursor.x, data.cursor.y);
+                    }
+                    
+                    if (data.scroll !== undefined) {
+                        setScrollPosition(prev => Math.max(0, prev + data.scroll));
+                    }
+                };
+                
+                return () => socket.close();
+            }, []);
+
+            const handleClick = (x, y) => {
+                const element = document.elementFromPoint(x, y);
+                if (element && element.getAttribute('data-action')) {
+                    const action = element.getAttribute('data-action');
+                    setCurrentTask(action);
+                    console.log(`Executing action: ${action}`);
+                }
+            };
+
+            const mainMenuItems = [
+                { id: 1, label: 'Volume Control', action: 'volume', color: 'bg-blue-500' },
+                { id: 2, label: 'Brightness', action: 'brightness', color: 'bg-green-500' },
+                { id: 3, label: 'Media Player', action: 'media', color: 'bg-purple-500' },
+                { id: 4, label: 'System Control', action: 'system', color: 'bg-red-500' }
+            ];
+
+            return (
+                <div className="min-h-screen p-6">
+                    {/* Cursor */}
+                    <div 
+                        className="w-6 h-6 bg-blue-500 rounded-full fixed transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50"
+                        style={{ 
+                            left: `${cursorPosition.x}px`, 
+                            top: `${cursorPosition.y}px`,
+                            transition: 'all 0.1s ease-out',
+                            opacity: 0.7
+                        }}
+                    />
+
+                    {/* Status Bar */}
+                    <div className="fixed top-0 left-0 right-0 bg-gray-800 text-white p-2 z-40">
+                        <div className="flex justify-between items-center">
+                            <span>Status: {connected ? 'Connected' : 'Disconnected'}</span>
+                            <span>Current Task: {currentTask || 'None'}</span>
+                            <span>Menu: {menuOpen ? 'Open' : 'Closed'}</span>
+                            <span>Scroll Position: {Math.round(scrollPosition)}</span>
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="mt-16 flex gap-4">
+                        {/* Scrollable Content */}
+                        <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
+                            <div className="relative h-[70vh]">
+                                <div 
+                                    className="absolute w-full transition-transform"
+                                    style={{ transform: `translateY(-${scrollPosition}px)` }}
+                                >
+                                    {scrollContent.map((item, i) => (
+                                        <div key={i} className="p-6 border-b hover:bg-gray-50">
+                                            <h3 className="text-xl font-bold mb-2">{item.title}</h3>
+                                            <p className="text-gray-600">{item.content}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                {/* Scrollbar */}
+                                <div className="absolute right-0 top-0 w-2 h-full bg-gray-200">
+                                    <div 
+                                        className="w-full bg-blue-500 rounded"
+                                        style={{
+                                            height: '20%',
+                                            transform: `translateY(${scrollPosition * 0.8}px)`,
+                                            transition: 'transform 0.1s ease-out'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Menu Panel */}
+                        <div className={`w-80 transition-all duration-300 ${menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}>
+                            <div className="bg-white rounded-lg shadow-lg p-4">
+                                <h2 className="text-xl font-bold mb-4">Menu</h2>
+                                <div className="flex flex-col gap-3">
+                                    {mainMenuItems.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            data-action={item.action}
+                                            className={`${item.color} text-white p-4 rounded-lg transition-all transform hover:scale-105
+                                                ${activeButton === item.id ? 'ring-4 ring-white' : ''}`}
+                                            onMouseEnter={() => setActiveButton(item.id)}
+                                            onMouseLeave={() => setActiveButton(null)}
+                                        >
+                                            <div className="text-xl">{item.label}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Gesture Instructions */}
+                    <div className="fixed bottom-4 left-4 bg-white rounded-lg p-4 shadow-lg">
+                        <h3 className="font-bold mb-2">Gesture Controls:</h3>
+                        <ul className="text-sm">
+                            <li>👆 Index finger: Move cursor</li>
+                            <li>✌️ Two fingers up: Scroll (move hand up/down)</li>
+                            <li>👌 Pinch to click</li>
+                            <li>🖐️ Show 5 fingers: Open menu</li>
+                            <li>👍 Thumb only: Close menu</li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<GestureInterface />, document.getElementById('root'));
+    </script>
+</body>
+</html>
